@@ -26,8 +26,12 @@ Route::get('/import/parliament',array(
 	'uses'=>'DataController@importParliament'
 ));
 
+Route::get('/import/pahang', array(
+	'as'=> 'import_pahang',
+	'uses'=>'DataController@importPahang'
+));
+
 Route::get('/state/{state}', function($state){
-	// App::make('MapController')->showMap($state);
 	return View::make('map');
 });
 

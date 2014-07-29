@@ -11,9 +11,9 @@ class MapController extends BaseController {
 		$result = DB::table('state')->select('state_id')->where('page','=',$state)->first();
 		$stateId = $result->state_id;
 
-		$result = DB::table('parliament')->select('parliament_id')->where('state_id','=',$stateId)->get();
-		$parliamentIdSmall = $result[0]->parliament_id;
-		$parliamentIdBig = $result[sizeof($result)-1]->parliament_id;
+		$parliaments = DB::table('parliament')->select('parliament_id', 'location')->where('state_id','=',$stateId)->get();
+		$parliamentIdSmall = $parliaments[0]->parliament_id;
+		$parliamentIdBig = $parliaments[sizeof($parliaments)-1]->parliament_id;
 
 		$dms = DB::table('dm')
 					->where('parliament_id','>=',$parliamentIdSmall)
@@ -21,8 +21,6 @@ class MapController extends BaseController {
 					->get();
 
 		$i = 0;
-		$allCoordinates = array();
-
 		foreach ($dms as $row) {
 			$latlng = explode(" ", $row->dm_coordinates);
 			$coordinates = array();
@@ -38,9 +36,25 @@ class MapController extends BaseController {
 			}
 
 			$dms[$i]->dm_coordinates = $coordinates;
+
+			/*  */
+			foreach ($parliaments as $parliament) {
+				if($row->parliament_id == $parliament->parliament_id) {
+					$dms[$i]->location = $parliament->location;
+					break;
+				}
+			}
+
+			$dun = Dun::find($row->dun_id);
+			$dms[$i]->dun_location = $dun->location;
+
 			$i++;
 		}
 		
+		// echo '<pre>';
+		// print_r($dms);
+		// echo '</pre>';
+
 		return Response::json($dms);
 	}
 

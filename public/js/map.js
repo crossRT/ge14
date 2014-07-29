@@ -1,3 +1,7 @@
+var polygons = [];
+var informations = [];
+var infoWindow = new google.maps.InfoWindow();
+
 $(document).ready(function() {
 
 	//Map Options
@@ -7,95 +11,95 @@ $(document).ready(function() {
 		panControl: false,
 		zoomControl: false,
 		mapTypeControl: false,
-		zoom: 7
+		zoom: 6
 	};
 
 	//Map object
 	var map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
 
-	//Current state
-	var currentUrl = document.URL;
-	var state = currentUrl.substr(currentUrl.lastIndexOf('/') + 1);
+	$('.thumbnail-states').click(function(e) {
 
-	//Get default location of current state
-	$.ajax({
-		url:"/request/latlng/"+state,
-		dataType:"json",
-		async:false,
-		success:function(result)
-		{
-			var newLatLng = new google.maps.LatLng(result['lat'],result['lng']);
-			map.panTo(newLatLng);
-			map.setZoom(10);
-	}});
-	
-	//Get all dm in current state
-	$.ajax({
-		url:"/request/dm/"+state,
-		dataType:"json",
-		async:false,
-		success:function(result)
-		{
-			// console.log(result[0].dm_coordinates);
-			for (var i = 0; i < result.length; i++) {
-				var coordinates = result[i].dm_coordinates;
-				var paths = [];
-				for (var j = 0; j < coordinates.length; j++) {
-					var latlng = new google.maps.LatLng(coordinates[j].lat, coordinates[j].lng);
-					paths.push(latlng);
-				};
+		var state = $(this).children(".state-name").attr('id');
 
-				var polygon = new google.maps.Polygon({
-					paths: paths,
-					strokeColor: '#FF0000',
-				    strokeOpacity: 0.8,
-				    strokeWeight: 2,
-				    fillColor: '#FF0000',
-				    fillOpacity: 0.35
-				});
+		//Get default location of current state
+		$.ajax({
+			url:"/request/latlng/"+state,
+			dataType:"json",
+			async:false,
+			success:function(result)
+			{
+				var newLatLng = new google.maps.LatLng(result['lat'],result['lng']);
+				map.panTo(newLatLng);
+				map.setZoom(9);
+		}});
+		
+		//Get all dm in current state
+		$.ajax({
+			url:"/request/dm/"+state,
+			dataType:"json",
+			async:true,
+			success:function(result)
+			{
+				var previousId = result[0].parliament_id;
+				var fillColor = '#00FF00';
 
-				polygon.setMap(map);
-			};
+				//Every DM
+				for (var i = 0; i < result.length; i++) {
+					var coordinates = result[i].dm_coordinates;
+					var paths = [];
 
-	}});
+					//DM's coordinates path;
+					for (var j = 0; j < coordinates.length; j++) {
+						var latlng = new google.maps.LatLng(coordinates[j].lat, coordinates[j].lng);
+						paths.push(latlng);
+					}
 
+					if(previousId != result[i].parliament_id){
+						fillColor = '#' + (function co(lor){   return (lor += [0,1,2,3,4,5,6,7,8,9,'a','b','c','d','e','f'][Math.floor(Math.random()*16)])
+						  && (lor.length == 6) ?  lor : co(lor); })('');
+						  previousId = result[i].parliament_id;
+					}
+
+					var polygon = new google.maps.Polygon({
+						paths: paths,
+						strokeColor: '#999999',
+						strokeOpacity: 0.8,
+						strokeWeight: 2,
+						fillColor: fillColor,
+						fillOpacity: 0.35
+					});
+
+					var information = [result[i].location, result[i].dun_location, result[i].parliament_id];
+
+					polygon.setMap(map);
+					polygons.push(polygon);
+					informations.push(information);
+					bindInfoWindow(polygons[i], informations[i], map);
+				}
+		}});
+	});
 });
 
+function bindInfoWindow(polygon, information, map)
+{
+	//Info window container
+	var html = $("<div> " +
+					"<div style='width: 200px; height: 100px;' >"+
+						"<b>P"+ information[2] +"</b>" +
+						"<br/>" +
+						"<b>"+ information[0] +"</b>" +
+						"<br/>" +
+						"<b>"+ information[1] +"</b>" +
+						"<div class='table' >"+
+						"</div>"+
+					"</div>" +
+				"</div>");
 
-
-
-// function initialize() {
-//   var mapOptions = {
-//     zoom: 5,
-//     center: new google.maps.LatLng(24.886436490787712, -70.2685546875),
-//     mapTypeId: google.maps.MapTypeId.TERRAIN
-//   };
-
-//   var bermudaTriangle;
-
-//   var map = new google.maps.Map(document.getElementById('map-canvas'),
-//       mapOptions);
-
-//   // Define the LatLng coordinates for the polygon's path.
-//   var triangleCoords = [
-//     // new google.maps.LatLng(25.774252, -80.190262),
-//     new google.maps.LatLng(18.466465, -66.118292),
-//     new google.maps.LatLng(32.321384, -64.75737),
-//     new google.maps.LatLng(25.774252, -80.190262)
-//   ];
-
-//   console.log(triangleCoords);
-//   // Construct the polygon.
-//   bermudaTriangle = new google.maps.Polygon({
-//     paths: triangleCoords,
-//     strokeColor: '#FF0000',
-//     strokeOpacity: 0.8,
-//     strokeWeight: 2,
-//     fillColor: '#FF0000',
-//     fillOpacity: 0.35
-//   });
-
-//   bermudaTriangle.setMap(map);
-// }
-
-// google.maps.event.addDomListener(window, 'load', initialize);
+	//Marker onClick event
+	google.maps.event.addListener(polygon, 'click', function(event) {
+		// map.panTo(marker.getPosition());	//move map to marker position
+		infoWindow.setContent(html.html());	//set the info
+		infoWindow.setPosition(event.latLng);
+		infoWindow.open(map);		//open the info
+	});
+}
